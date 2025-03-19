@@ -3,6 +3,7 @@ import psutil
 import subprocess
 import json
 import math
+import sys
 
 app = Flask(__name__)
 
@@ -23,7 +24,8 @@ def get_info():
     
     recv = {}
     sent = {}
-    net_interface = "ens18"
+    #net_interface = "ens18"
+    #net_interface = sys.argv[1]
 
     data = psutil.net_io_counters(pernic=True)
     interfaces = data.keys()
