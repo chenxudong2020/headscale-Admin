@@ -25,7 +25,7 @@ def get_info():
     recv = {}
     sent = {}
     #net_interface = "ens18"
-    #net_interface = sys.argv[1]
+    net_interface = sys.argv[1]
 
     data = psutil.net_io_counters(pernic=True)
     interfaces = data.keys()
