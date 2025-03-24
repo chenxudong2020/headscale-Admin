@@ -2,31 +2,36 @@ package handlers
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 func DataUsage(c *gin.Context) {
-	// 读取 data.json 文件
-	file, err := os.Open("data.json")
+	// Open the data.json file
+	file, err := os.Open("data_usage.json")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open data.json"})
 		return
 	}
 	defer file.Close()
 
-	content, _ := ioutil.ReadAll(file)
+	// Read and parse the JSON data
 	var jsonData map[string]map[string]string
-	json.Unmarshal(content, &jsonData)
+	err = json.NewDecoder(file).Decode(&jsonData)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse data.json"})
+		return
+	}
 
-	// 处理 recv 和 sent 数据
+	// Process recv and sent data
 	newRecv := processData(jsonData["recv"])
 	newSent := processData(jsonData["sent"])
 
+	// Create the response
 	newData := gin.H{
 		"recv": newRecv,
 		"sent": newSent,
@@ -40,10 +45,10 @@ func processData(data map[string]string) map[string]string {
 	newData := make(map[string]string)
 
 	for i := 0; i < len(keys)-1; i++ {
-		val1 := data[keys[i]]
-		val2 := data[keys[i+1]]
-		diff := math.Ceil(float64(toInt(val2) - toInt(val1)))
-		newData[keys[i]] = string(diff)
+		val1, _ := strconv.Atoi(data[keys[i]])                    // Convert string to int
+		val2, _ := strconv.Atoi(data[keys[i+1]])                  // Convert string to int
+		diff := math.Ceil(float64(val2 - val1))                   // Calculate the difference
+		newData[keys[i]] = strconv.FormatFloat(diff, 'f', -1, 64) // Convert float64 to string
 	}
 
 	return newData
