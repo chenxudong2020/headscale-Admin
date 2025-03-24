@@ -1,61 +1,50 @@
 package handlers
 
 import (
-    "encoding/json"
-    "math"
-    "net/http"
-    "os"
-    "strconv"
+	"encoding/json"
+	"io/ioutil"
+	"math"
+	"net/http"
+	"os"
 
-    "go-flask-rewrite/internal/models"
+	"github.com/gin-gonic/gin"
 )
 
-func GetDataUsage(w http.ResponseWriter, r *http.Request) {
-    file, err := os.ReadFile("data.json")
-    if err != nil {
-        http.Error(w, "Unable to read data file", http.StatusInternalServerError)
-        return
-    }
+func DataUsage(c *gin.Context) {
+	// 读取 data.json 文件
+	file, err := os.Open("data.json")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open data.json"})
+		return
+	}
+	defer file.Close()
 
-    var data models.Data
-    if err := json.Unmarshal(file, &data); err != nil {
-        http.Error(w, "Error parsing JSON data", http.StatusInternalServerError)
-        return
-    }
+	content, _ := ioutil.ReadAll(file)
+	var jsonData map[string]map[string]string
+	json.Unmarshal(content, &jsonData)
 
-    recvValues := make([]float64, 0, len(data.Recv))
-    for _, value := range data.Recv {
-        recvValue, _ := strconv.ParseFloat(value, 64)
-        recvValues = append(recvValues, recvValue)
-    }
+	// 处理 recv 和 sent 数据
+	newRecv := processData(jsonData["recv"])
+	newSent := processData(jsonData["sent"])
 
-    newRecvValues := make(map[string]string)
-    for i := 0; i < len(recvValues)-1; i++ {
-        newRecvValues[string('a'+i)] = strconv.Itoa(int(math.Ceil(recvValues[i+1] - recvValues[i])))
-    }
+	newData := gin.H{
+		"recv": newRecv,
+		"sent": newSent,
+	}
 
-    sentValues := make([]float64, 0, len(data.Sent))
-    for _, value := range data.Sent {
-        sentValue, _ := strconv.ParseFloat(value, 64)
-        sentValues = append(sentValues, sentValue)
-    }
+	c.JSON(http.StatusOK, newData)
+}
 
-    newSentValues := make(map[string]string)
-    for i := 0; i < len(sentValues)-1; i++ {
-        newSentValues[string('a'+i)] = strconv.Itoa(int(math.Ceil(sentValues[i+1] - sentValues[i])))
-    }
+func processData(data map[string]string) map[string]string {
+	keys := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y"}
+	newData := make(map[string]string)
 
-    newData := map[string]interface{}{
-        "recv": newRecvValues,
-        "sent": newSentValues,
-    }
+	for i := 0; i < len(keys)-1; i++ {
+		val1 := data[keys[i]]
+		val2 := data[keys[i+1]]
+		diff := math.Ceil(float64(toInt(val2) - toInt(val1)))
+		newData[keys[i]] = string(diff)
+	}
 
-    response, err := json.Marshal(newData)
-    if err != nil {
-        http.Error(w, "Error creating JSON response", http.StatusInternalServerError)
-        return
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    w.Write(response)
+	return newData
 }

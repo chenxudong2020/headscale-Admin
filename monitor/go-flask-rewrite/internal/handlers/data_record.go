@@ -1,69 +1,48 @@
 package handlers
 
 import (
-    "encoding/json"
-    "io/ioutil"
-    "net/http"
-    "os"
-    "sync"
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
+	"os"
+
+	"github.com/gin-gonic/gin"
 )
 
-var mu sync.Mutex
+func DataRecord(c *gin.Context) {
+	// 读取当前数据
+	info := make(map[string]interface{})
+	GetInfoData(&info)
 
-func GetDataRecord(w http.ResponseWriter, r *http.Request) {
-    mu.Lock()
-    defer mu.Unlock()
+	recvSpeed := info["recv_speed"].(float64)
+	sentSpeed := info["sent_speed"].(float64)
 
-    jsonDataNow, err := getInfo()
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	// 读取本地 data.json 文件
+	file, err := os.Open("data.json")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open data.json"})
+		return
+	}
+	defer file.Close()
 
-    recvSpeed := jsonDataNow["recv_speed"].(string)
-    sentSpeed := jsonDataNow["sent_speed"].(string)
+	content, _ := ioutil.ReadAll(file)
+	var jsonData map[string]map[string]string
+	json.Unmarshal(content, &jsonData)
 
-    file, err := ioutil.ReadFile("data.json")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	// 更新数据
+	keys := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y"}
+	for i := 0; i < len(keys)-1; i++ {
+		jsonData["sent"][keys[i]] = jsonData["sent"][keys[i+1]]
+		jsonData["recv"][keys[i]] = jsonData["recv"][keys[i+1]]
+	}
 
-    var jsonDataLocal map[string]interface{}
-    if err := json.Unmarshal(file, &jsonDataLocal); err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	jsonData["sent"]["y"] = string(sentSpeed)
+	jsonData["recv"]["y"] = string(recvSpeed)
 
-    keys := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y"}
-    for i := 0; i < len(keys)-1; i++ {
-        jsonDataLocal["sent"].(map[string]interface{})[keys[i]] = jsonDataLocal["sent"].(map[string]interface{})[keys[i+1]]
-        jsonDataLocal["recv"].(map[string]interface{})[keys[i]] = jsonDataLocal["recv"].(map[string]interface{})[keys[i+1]]
-    }
+	// 写回文件
+	file, _ = os.Create("data.json")
+	defer file.Close()
+	json.NewEncoder(file).Encode(jsonData)
 
-    jsonDataLocal["sent"].(map[string]interface{})["y"] = sentSpeed
-    jsonDataLocal["recv"].(map[string]interface{})["y"] = recvSpeed
-
-    updatedData, err := json.MarshalIndent(jsonDataLocal, "", "    ")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-
-    if err := ioutil.WriteFile("data.json", updatedData, 0644); err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    w.Write(updatedData)
-}
-
-func getInfo() (map[string]interface{}, error) {
-    // This function should implement the logic to retrieve the current network data usage
-    // and return it as a map. This is a placeholder for the actual implementation.
-    return map[string]interface{}{
-        "recv_speed": "100", // Placeholder value
-        "sent_speed": "200", // Placeholder value
-    }, nil
+	c.JSON(http.StatusOK, jsonData)
 }

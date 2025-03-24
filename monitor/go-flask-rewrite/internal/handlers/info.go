@@ -1,39 +1,42 @@
 package handlers
 
 import (
-	"encoding/json"
+	"math"
 	"net/http"
-	"runtime"
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/mem"
-	"github.com/shirou/gopsutil/net"
+
+	"github.com/gin-gonic/gin"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v3/net"
 )
 
-type InfoResponse struct {
-	CPUUsage           float64 `json:"cpu_usage"`
-	MemoryUsagePercent float64 `json:"memory_usage_percent"`
-	SentSpeed          uint64  `json:"sent_speed"`
-	RecvSpeed          uint64  `json:"recv_speed"`
-}
-
-func GetInfo(w http.ResponseWriter, r *http.Request) {
+func GetInfo(c *gin.Context) {
+	// 获取 CPU 使用率
 	cpuUsage, _ := cpu.Percent(0, false)
-	memInfo, _ := mem.VirtualMemory()
-	netIO, _ := net.IOCounters(false)
 
-	var sentSpeed, recvSpeed uint64
-	if len(netIO) > 0 {
-		sentSpeed = netIO[0].BytesSent
-		recvSpeed = netIO[0].BytesRecv
+	// 获取内存使用率
+	memory, _ := mem.VirtualMemory()
+
+	// 获取网卡信息
+	netInterface := c.DefaultQuery("interface", "eth0") // 默认网卡为 eth0
+	netIO, _ := net.IOCounters(true)
+
+	var sentSpeed, recvSpeed int64
+	for _, iface := range netIO {
+		if iface.Name == netInterface {
+			sentSpeed = int64(math.Ceil(float64(iface.BytesSent) / 1024))
+			recvSpeed = int64(math.Ceil(float64(iface.BytesRecv) / 1024))
+			break
+		}
 	}
 
-	infoResponse := InfoResponse{
-		CPUUsage:           cpuUsage[0],
-		MemoryUsagePercent: memInfo.UsedPercent,
-		SentSpeed:          sentSpeed,
-		RecvSpeed:          recvSpeed,
+	// 构建返回数据
+	info := gin.H{
+		"cpu_usage":            cpuUsage[0],
+		"memory_usage_percent": memory.UsedPercent,
+		"sent_speed":           sentSpeed,
+		"recv_speed":           recvSpeed,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(infoResponse)
+	c.JSON(http.StatusOK, info)
 }

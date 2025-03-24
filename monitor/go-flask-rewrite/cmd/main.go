@@ -2,14 +2,17 @@ package main
 
 import (
 	"go-flask-rewrite/internal/handlers"
-	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	http.HandleFunc("/info", handlers.GetInfo)
-	http.HandleFunc("/reload_acl", handlers.ReloadACL)
-	http.HandleFunc("/data_record", handlers.DataRecord)
-	http.HandleFunc("/data_usage", handlers.DataUsage)
+	r := gin.Default()
 
-	http.ListenAndServe(":5000", nil)
+	r.GET("/reload_acl", handlers.ReloadACL)
+	r.GET("/info", handlers.GetInfo)
+	r.GET("/data_record", handlers.DataRecord)
+	r.GET("/data_usage", handlers.DataUsage)
+
+	r.Run(":5000") // 监听 5000 端口
 }
