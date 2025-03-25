@@ -183,7 +183,7 @@
                 </tr>
                 <tr>
                   <td>公告中心</td>
-                  <td>感谢您选择headscale-Admin</td>
+                  <td>感谢您选择异地组网</td>
                 </tr>
 
               </tbody>

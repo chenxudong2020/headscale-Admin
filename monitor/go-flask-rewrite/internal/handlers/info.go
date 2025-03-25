@@ -25,8 +25,8 @@ func GetInfo(c *gin.Context) {
 		return
 	}
 
-	// 确保 CPU 使用率在 0-100 之间
-	cpuUsagePercent := math.Min(math.Max(cpuUsage[0], 0), 100)
+	// 确保 CPU 使用率在 0-100 之间，并保留为正整数
+	cpuUsagePercent := int(math.Round(math.Min(math.Max(cpuUsage[0], 0), 100)))
 
 	// 获取内存使用率
 	memory, err := mem.VirtualMemory()
@@ -35,8 +35,8 @@ func GetInfo(c *gin.Context) {
 		return
 	}
 
-	// 确保内存使用率在 0-100 之间
-	memoryUsagePercent := math.Min(math.Max(memory.UsedPercent, 0), 100)
+	// 确保内存使用率在 0-100 之间，并保留为正整数
+	memoryUsagePercent := int(math.Round(math.Min(math.Max(memory.UsedPercent, 0), 100)))
 
 	// 获取网卡信息
 	netIO, err := net.IOCounters(true)
